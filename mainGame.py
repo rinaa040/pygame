@@ -2,6 +2,7 @@ import pygame
 import sys
 import os
 import random as rd
+from PIL import Image
 
 pygame.init()
 size = width, height = 500, 500
@@ -38,16 +39,36 @@ def load_image(name, colorkey=None):
     return image
 
 
+def split_animated_gif(gif_file_path, colorkey=None):
+    ret = []
+    gif = Image.open(gif_file_path)
+    for frame_index in range(gif.n_frames):
+        gif.seek(frame_index)
+        frame_rgba = gif.convert("RGBA")
+        pygame_image = pygame.image.fromstring(
+            frame_rgba.tobytes(), frame_rgba.size, frame_rgba.mode)
+        if colorkey is not None:
+            pygame_image = pygame_image.convert()
+            if colorkey == -1:
+                colorkey = pygame_image.get_at((0, 0))
+            pygame_image.set_colorkey(colorkey)
+        else:
+            pygame_image = pygame_image.convert_alpha()
+        ret.append(pygame_image)
+    return ret
+
+
+frames = []
+for frame in split_animated_gif("сut.gif"):
+    frames.append(frame)
+
+
 tile_images = {
-    'door1': load_image('door1.jpg'),
     'mess': load_image('grass.jpg'),
     'lawn': load_image('good_grass.jpg'),
     'flower': load_image('flower.jpg'),
-    'window': load_image('window.png'),
     'box': load_image('grass_box.jpg')
 }
-player_image = load_image('cut.png')
-player_image = pygame.transform.scale(player_image, (50, 50))
 
 tile_width = tile_height = 50
 
@@ -62,21 +83,41 @@ class Tile(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y):
+    def __init__(self, frames, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
         self.pos_x = pos_x
         self.pos_y = pos_y
-        self.image = player_image
+        self.frames = frames
+        self.cur_frame = 0
+        self.image = self.frames[self.cur_frame]
+        self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect().move(
             tile_width * self.pos_x, tile_height * self.pos_y)
 
-    def move(self):
+    def update(self, colorkey=None):
+        self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+        self.image = self.frames[self.cur_frame]
+        self.image = pygame.transform.scale(self.image, (50, 50))
+
+    def move_up(self):
+        self.pos_y -= 1
+        self.rect = self.image.get_rect().move(
+            tile_width * self.pos_x, tile_height * self.pos_y)
+
+    def move_down(self):
+        self.pos_y += 1
+        self.rect = self.image.get_rect().move(
+            tile_width * self.pos_x, tile_height * self.pos_y)
+
+    def move_right(self):
         self.pos_x += 1
         self.rect = self.image.get_rect().move(
             tile_width * self.pos_x, tile_height * self.pos_y)
-        print(tile_width * self.pos_x, tile_height * self.pos_y)
-        print(2)
 
+    def move_left(self):
+        self.pos_x -= 1
+        self.rect = self.image.get_rect().move(
+            tile_width * self.pos_x, tile_height * self.pos_y)
 
 
 def generate_level(level):
@@ -93,7 +134,9 @@ def generate_level(level):
                 Tile('flower', x, y)
             elif level[y][x] == '@':
                 Tile('lawn', x, y)
-                new_player = Player(x, y)
+                px = x
+                py = y
+    new_player = Player(frames, px, py)
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
 
@@ -142,6 +185,7 @@ def load_level(filename):
         house_map[player_coord[0]][player_coord[1]] = '@'
     else:
         player_coord = rd.randint(0, house_height - 1), rd.randint(0, house_width - 1)
+        house_map[player_coord[0]][player_coord[1]] = '@'
     with open(filename, 'w') as mapFile:
         for i in range(len(house_map)):
             house_map[i] = ''.join(house_map[i])
@@ -154,8 +198,6 @@ def load_level(filename):
     max_width = 5
 
     # дополняем каждую строку пустыми клетками ('.')
-    print(list(map(lambda x: x.ljust(max_width, '.'), level_map)))
-    print(7)
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
@@ -192,8 +234,6 @@ def start_screen():
         clock.tick(fps)
 
 
-
-
 class Camera:
     # зададим начальный сдвиг камеры
     def __init__(self):
@@ -214,20 +254,50 @@ class Camera:
 start_screen()
 camera = Camera()
 running = True
-play_mode = False
-#generate_level(load_level('field.txt'))
+moving_up = False
+moving_down = False
+moving_right = False
+moving_left = False
+# generate_level(load_level('field.txt'))
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                player.move()
-                print(player)
+            if event.key == pygame.K_UP:
+                moving_up = not moving_up
+                moving_down = False
+                moving_right = False
+                moving_left = False
+            if event.key == pygame.K_DOWN:
+                moving_down = not moving_down
+                moving_up = False
+                moving_right = False
+                moving_left = False
+            if event.key == pygame.K_RIGHT:
+                moving_right = not moving_right
+                moving_down = False
+                moving_left = False
+                moving_up = False
+            if event.key == pygame.K_LEFT:
+                moving_left = not moving_left
+                moving_up = False
+                moving_down = False
+                moving_right = False
+
+        if moving_up:
+            player.move_up()
+        if moving_down:
+            player.move_down()
+        if moving_right:
+            player.move_right()
+        if moving_left:
+            player.move_left()
+            print(1)
 
     screen.fill('white')
     all_sprites.draw(screen)
     all_sprites.update()
-    clock.tick()
+    clock.tick(40)
     pygame.display.flip()
 pygame.quit()
