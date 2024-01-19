@@ -12,6 +12,7 @@ player = None
 # группы спрайтов
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
+collided_tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 
 fps = 50
@@ -74,15 +75,14 @@ tile_width = tile_height = 50
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y, flag=True):
-        super().__init__(tiles_group, all_sprites)
+        if flag:
+            super().__init__(tiles_group, all_sprites)
+        else:
+            super().__init__(collided_tiles_group, all_sprites)
         self.image = tile_images[tile_type]
         self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
-        if not flag:
-            self.mask = pygame.mask.from_surface(self.image)
-    #def update(self):
-
 
 
 class Player(pygame.sprite.Sprite):
@@ -92,11 +92,16 @@ class Player(pygame.sprite.Sprite):
         self.pos_y = pos_y
         self.frames = frames
         self.cur_frame = 0
+        self.angle = 0
         self.image = self.frames[self.cur_frame]
         self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect().move(
             tile_width * self.pos_x, tile_height * self.pos_y)
-        self.mask = pygame.mask.from_surface(self.image)
+        self.up_collide = pygame.sprite.spritecollideany(self, collided_tiles_group)
+        self.down_collide = pygame.sprite.spritecollideany(self, collided_tiles_group)
+        self.left_collide = pygame.sprite.spritecollideany(self, collided_tiles_group)
+        self.right_collide = pygame.sprite.spritecollideany(self, collided_tiles_group)
+        print(self.down_collide)
 
     def update(self, colorkey=None):
         self.cur_frame = (self.cur_frame + 1) % len(self.frames)
@@ -104,33 +109,49 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.image, (50, 50))
 
     def move_up(self):
-        #if not pygame.sprite.collide_mask(self, tiles_group):
-            count = self.pos_y
-            for i in range(count):
+        count = self.pos_y + 1
+        for i in range(count):
+            self.image = pygame.transform.rotate(self.image, 0)
+            if self.up_collide:
+                break
+            else:
                 self.pos_y -= 1
                 self.rect = self.image.get_rect().move(
                     tile_width * self.pos_x, tile_height * self.pos_y)
 
     def move_down(self, level_y):
-        count = level_y - self.pos_y
+        count = level_y - self.pos_y + 1
         for i in range(count):
-            self.pos_y += 1
-            self.rect = self.image.get_rect().move(
-                tile_width * self.pos_x, tile_height * self.pos_y)
+            self.image = pygame.transform.rotate(self.image, 180)
+
+            if self.down_collide:
+                break
+            else:
+                self.pos_y += 1
+                self.rect = self.image.get_rect().move(
+                    tile_width * self.pos_x, tile_height * self.pos_y)
 
     def move_right(self, level_x):
         count = level_x - self.pos_x
         for i in range(count):
-            self.pos_x += 1
-            self.rect = self.image.get_rect().move(
-                tile_width * self.pos_x, tile_height * self.pos_y)
+            self.image = pygame.transform.rotate(self.image, -90)
+            if self.right_collide:
+                break
+            else:
+                self.pos_x += 1
+                self.rect = self.image.get_rect().move(
+                    tile_width * self.pos_x, tile_height * self.pos_y)
 
     def move_left(self):
-        count = self.pos_x
+        count = self.pos_x + 1
         for i in range(count):
-            self.pos_x -= 1
-            self.rect = self.image.get_rect().move(
-                tile_width * self.pos_x, tile_height * self.pos_y)
+            self.image = pygame.transform.rotate(self.image, 90)
+            if self.left_collide:
+                break
+            else:
+                self.pos_x -= 1
+                self.rect = self.image.get_rect().move(
+                    tile_width * self.pos_x, tile_height * self.pos_y)
 
 
 def generate_level(level):
@@ -140,13 +161,13 @@ def generate_level(level):
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '.':
-                Tile('mess', x, y, False)
+                Tile('mess', x, y)
             elif level[y][x] == '#':
-                Tile('box', x, y)
+                Tile('box', x, y, False)
             elif level[y][x] == '*':
-                Tile('flower', x, y)
+                Tile('flower', x, y, False)
             elif level[y][x] == '@':
-                Tile('lawn', x, y, False)
+                Tile('lawn', x, y)
                 px = x
                 py = y
     new_player = Player(frames, px, py)
@@ -227,14 +248,14 @@ def start_screen():
     screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 30)
     text_coord = 50
-    #for line in intro_text:
-        #string_rendered = font.render(line, 1, pygame.Color('black'))
-        #intro_rect = string_rendered.get_rect()
-        #text_coord += 10
-        #intro_rect.top = text_coord
-        #intro_rect.x = 10
-        #text_coord += intro_rect.height
-        #screen.blit(string_rendered, intro_rect)
+    # for line in intro_text:
+    # string_rendered = font.render(line, 1, pygame.Color('black'))
+    # intro_rect = string_rendered.get_rect()
+    # text_coord += 10
+    # intro_rect.top = text_coord
+    # intro_rect.x = 10
+    # text_coord += intro_rect.height
+    # screen.blit(string_rendered, intro_rect)
 
     while True:
         for event in pygame.event.get():
@@ -267,7 +288,6 @@ class Camera:
 start_screen()
 camera = Camera()
 running = True
-
 # generate_level(load_level('field.txt'))
 while running:
     for event in pygame.event.get():
