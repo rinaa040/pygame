@@ -12,7 +12,6 @@ player = None
 # группы спрайтов
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
-collided_tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 
 fps = 50
@@ -75,10 +74,7 @@ tile_width = tile_height = 50
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y, flag=True):
-        if flag:
-            super().__init__(tiles_group, all_sprites)
-        else:
-            super().__init__(collided_tiles_group, all_sprites)
+        super().__init__(tiles_group, all_sprites)
         self.image = tile_images[tile_type]
         self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect().move(
@@ -97,11 +93,6 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect().move(
             tile_width * self.pos_x, tile_height * self.pos_y)
-        self.up_collide = pygame.sprite.spritecollideany(self, collided_tiles_group)
-        self.down_collide = pygame.sprite.spritecollideany(self, collided_tiles_group)
-        self.left_collide = pygame.sprite.spritecollideany(self, collided_tiles_group)
-        self.right_collide = pygame.sprite.spritecollideany(self, collided_tiles_group)
-        print(self.down_collide)
 
     def update(self, colorkey=None):
         self.cur_frame = (self.cur_frame + 1) % len(self.frames)
@@ -112,67 +103,107 @@ class Player(pygame.sprite.Sprite):
         count = self.pos_y + 1
         for i in range(count):
             self.image = pygame.transform.rotate(self.image, 0)
-            if self.up_collide:
+            if self.rect.collidelist(collided_tiles) != -1:
+                print(self.rect.collidelist(collided_tiles))
+                self.pos_y += 1
+                self.rect = self.image.get_rect().move(
+                    tile_width * self.pos_x, tile_height * self.pos_y)
+                break
+            if self.pos_y == 0:
                 break
             else:
                 self.pos_y -= 1
                 self.rect = self.image.get_rect().move(
                     tile_width * self.pos_x, tile_height * self.pos_y)
+                uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = load_image('good_grass.jpg')
+                uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = pygame.transform.scale(
+                    uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image, (50, 50))
 
     def move_down(self, level_y):
         count = level_y - self.pos_y + 1
         for i in range(count):
             self.image = pygame.transform.rotate(self.image, 180)
 
-            if self.down_collide:
+            if self.rect.collidelist(collided_tiles) != -1:
+                print(self.rect.collidelist(collided_tiles))
+                self.pos_y -= 1
+                self.rect = self.image.get_rect().move(
+                    tile_width * self.pos_x, tile_height * self.pos_y)
+                break
+            if self.pos_y == level_y:
                 break
             else:
                 self.pos_y += 1
                 self.rect = self.image.get_rect().move(
                     tile_width * self.pos_x, tile_height * self.pos_y)
+                uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = load_image('good_grass.jpg')
+                uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = pygame.transform.scale(
+                    uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image, (50, 50))
 
     def move_right(self, level_x):
-        count = level_x - self.pos_x
+        count = level_x - self.pos_x + 1
         for i in range(count):
             self.image = pygame.transform.rotate(self.image, -90)
-            if self.right_collide:
+            if self.rect.collidelist(collided_tiles) != -1:
+                print(self.rect.collidelist(collided_tiles))
+
+                self.pos_x -= 1
+                self.rect = self.image.get_rect().move(
+                    tile_width * self.pos_x, tile_height * self.pos_y)
+                break
+            if self.pos_x == level_x:
                 break
             else:
                 self.pos_x += 1
                 self.rect = self.image.get_rect().move(
                     tile_width * self.pos_x, tile_height * self.pos_y)
+                uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = load_image('good_grass.jpg')
+                uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = pygame.transform.scale(
+                    uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image, (50, 50))
 
     def move_left(self):
         count = self.pos_x + 1
         for i in range(count):
             self.image = pygame.transform.rotate(self.image, 90)
-            if self.left_collide:
+            if self.rect.collidelist(collided_tiles) != -1:
+                print(self.rect.collidelist(collided_tiles))
+
+                self.pos_x += 1
+                self.rect = self.image.get_rect().move(
+                    tile_width * self.pos_x, tile_height * self.pos_y)
+                break
+            if self.pos_x == 0:
                 break
             else:
                 self.pos_x -= 1
                 self.rect = self.image.get_rect().move(
                     tile_width * self.pos_x, tile_height * self.pos_y)
+                uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = load_image('good_grass.jpg')
+                uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = pygame.transform.scale(
+                    uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image, (50, 50))
 
 
 def generate_level(level):
     new_player, x, y = None, None, None
     tp = rd.choice([True, False])
     tp2 = rd.choice([True, False])
+    collided = []
+    uncollided = []
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '.':
-                Tile('mess', x, y)
+                uncollided.append(Tile('mess', x, y))
             elif level[y][x] == '#':
-                Tile('box', x, y, False)
+                collided.append(Tile('box', x, y))
             elif level[y][x] == '*':
-                Tile('flower', x, y, False)
+                collided.append(Tile('flower', x, y))
             elif level[y][x] == '@':
                 Tile('lawn', x, y)
                 px = x
                 py = y
     new_player = Player(frames, px, py)
     # вернем игрока, а также размер поля в клетках
-    return new_player, x, y
+    return new_player, x, y, collided, uncollided
 
 
 def load_level(filename):
@@ -235,7 +266,7 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
-player, level_x, level_y = generate_level(load_level('field.txt'))
+player, level_x, level_y, collided_tiles, uncollided_tiles = generate_level(load_level('field.txt'))
 
 
 def start_screen():
