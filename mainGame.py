@@ -7,6 +7,7 @@ from PIL import Image
 pygame.mixer.pre_init(44100, -16, 1, 512)
 pygame.init()
 pygame.mixer.music.load("again.mp3")
+pygame.mixer.music.play(-1)
 s = pygame.mixer.Sound("cut_sound.wav")
 size = width, height = 250, 400
 screen = pygame.display.set_mode(size)
@@ -122,7 +123,7 @@ class Player(pygame.sprite.Sprite):
     def move_up(self):
         self.cur_direction = 0
         count = self.pos_y + 1
-        pygame.mixer.music.set_volume(0.5)
+        #pygame.mixer.music.set_volume(0.5)
         s.play()
         for i in range(count):
             self.image = pygame.transform.rotate(self.image, 0)
@@ -146,7 +147,7 @@ class Player(pygame.sprite.Sprite):
     def move_down(self, level_y):
         self.cur_direction = 2
         count = level_y - self.pos_y + 1
-        pygame.mixer.music.set_volume(0.5)
+        #pygame.mixer.music.set_volume(0.5)
         s.play()
         for i in range(count):
             self.image = pygame.transform.rotate(self.image, 180)
@@ -170,7 +171,7 @@ class Player(pygame.sprite.Sprite):
     def move_right(self, level_x):
         self.cur_direction = 1
         count = level_x - self.pos_x + 1
-        pygame.mixer.music.set_volume(0.5)
+        #pygame.mixer.music.set_volume(0.5)
         s.play()
         for i in range(count):
             if self.rect.collidelist(collided_tiles) != -1:
@@ -191,7 +192,7 @@ class Player(pygame.sprite.Sprite):
     def move_left(self):
         self.cur_direction = 3
         count = self.pos_x + 1
-        pygame.mixer.music.set_volume(0.5)
+       # pygame.mixer.music.set_volume(0.5)
         s.play()
         for i in range(count):
             if self.rect.collidelist(collided_tiles) != -1:
@@ -240,38 +241,38 @@ def load_level(filename):
     house_height = 8
     objects = ['#', '*']
 
-    window_position = rd.randint(1, 2)
+    high_block_position = rd.randint(1, 2)
     for i in range(house_height):
         s = []
         for j in range(house_width):
             s.append('.')
         house_map.append(s)
 
-    door_coord = rd.randint(0, house_width - 2)
-    window_coord = rd.randint(0, house_width - 2)
+    low_block_coord = rd.randint(0, house_width - 2)
+    high_block_coord = rd.randint(0, house_width - 2)
     stuff_coord1 = rd.randint(0, house_width - 1)
     stuff_coord2 = rd.choice([0, house_width - 1])
     player_coord = rd.randint(0, house_height - 1), rd.randint(0, house_width - 1)
-    if window_position == 1:
-        house_map[0][window_coord] = rd.choice(objects)
-        house_map[0][window_coord + 1] = rd.choice(objects)
-        house_map[1][window_coord] = rd.choice(objects)
-        house_map[1][window_coord + 1] = rd.choice(objects)
+    if high_block_position == 1:
+        house_map[0][high_block_coord] = rd.choice(objects)
+        house_map[0][high_block_coord + 1] = rd.choice(objects)
+        house_map[1][high_block_coord] = rd.choice(objects)
+        house_map[1][high_block_coord + 1] = rd.choice(objects)
 
         house_map[3][stuff_coord1] = rd.choice(objects)
         house_map[2][house_width - stuff_coord1 - 1] = rd.choice(objects)
-    if window_position == 2:
-        house_map[2][window_coord] = rd.choice(objects)
-        house_map[2][window_coord + 1] = rd.choice(objects)
-        house_map[3][window_coord] = rd.choice(objects)
-        house_map[3][window_coord + 1] = rd.choice(objects)
+    if high_block_position == 2:
+        house_map[2][high_block_coord] = rd.choice(objects)
+        house_map[2][high_block_coord + 1] = rd.choice(objects)
+        house_map[3][high_block_coord] = rd.choice(objects)
+        house_map[3][high_block_coord + 1] = rd.choice(objects)
 
         house_map[0][stuff_coord1] = rd.choice(objects)
         house_map[1][house_width - stuff_coord1 - 1] = rd.choice(objects)
 
     for i in range(1, 4):
-        house_map[house_height - i][door_coord] = rd.choice(objects)
-        house_map[house_height - i][door_coord + 1] = rd.choice(objects)
+        house_map[house_height - i][low_block_coord] = rd.choice(objects)
+        house_map[house_height - i][low_block_coord + 1] = rd.choice(objects)
 
     if house_map[7][stuff_coord2] == '.':
         house_map[7][stuff_coord2] = rd.choice(objects)
@@ -311,30 +312,21 @@ def back(uncollided_tiles):
 
 
 def start_screen():
-    intro_text = ["ЗАСТАВКА", "",
-                  "Правила игры",
-                  "Если в правилах несколько строк,",
-                  "приходится выводить их построчно"]
 
     fon = pygame.transform.scale(load_image('fon.jpg'), (width, height))
+    rules = pygame.transform.scale(load_image('fon2.jpg'), (width, height))
     screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 30)
-    text_coord = 50
-    # for line in intro_text:
-    # string_rendered = font.render(line, 1, pygame.Color('black'))
-    # intro_rect = string_rendered.get_rect()
-    # text_coord += 10
-    # intro_rect.top = text_coord
-    # intro_rect.x = 10
-    # text_coord += intro_rect.height
-    # screen.blit(string_rendered, intro_rect)
-
+    flag = False
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
+                    event.type == pygame.MOUSEBUTTONDOWN and not flag:
+                screen.blit(rules, (0, 0))
+                flag = True
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN and flag:
                 return  # начинаем игру
         pygame.display.flip()
         clock.tick(fps)
@@ -370,5 +362,5 @@ while running:
     all_sprites.update()
     clock.tick(40)
     pygame.display.flip()
-    pygame.mixer.music.play(-1)
+
 pygame.quit()
