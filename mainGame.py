@@ -4,7 +4,10 @@ import os
 import random as rd
 from PIL import Image
 
+pygame.mixer.pre_init(44100, -16, 1, 512)
 pygame.init()
+pygame.mixer.music.load("again.mp3")
+s = pygame.mixer.Sound("cut_sound.wav")
 size = width, height = 250, 400
 screen = pygame.display.set_mode(size)
 player = None
@@ -59,7 +62,7 @@ def split_animated_gif(gif_file_path, colorkey=None):
 
 
 frames = []
-for frame in split_animated_gif("сut.gif"):
+for frame in split_animated_gif("cut1.gif"):
     frames.append(frame)
 
 tile_images = {
@@ -84,30 +87,50 @@ class Tile(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self, frames, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
-        self.pos_x = pos_x
-        self.pos_y = pos_y
+        self.pos_x = self.start_x = pos_x
+        self.pos_y = self.start_y = pos_y
         self.frames = frames
         self.cur_frame = 0
         self.angle = 0
+        self.cur_direction = 0
         self.image = self.frames[self.cur_frame]
         self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect().move(
             tile_width * self.pos_x, tile_height * self.pos_y)
 
+    def start_position(self):
+        self.pos_x = self.start_x
+        self.pos_y = self.start_y
+        self.rect = self.image.get_rect().move(
+            tile_width * self.pos_x, tile_height * self.pos_y)
+        self.cur_direction = 0
+
     def update(self, colorkey=None):
         self.cur_frame = (self.cur_frame + 1) % len(self.frames)
         self.image = self.frames[self.cur_frame]
         self.image = pygame.transform.scale(self.image, (50, 50))
+        if self.cur_direction == 0:
+            self.image = pygame.transform.rotate(self.image, 0)
+        if self.cur_direction == 1:
+            self.image = pygame.transform.rotate(self.image, 270)
+        if self.cur_direction == 2:
+            self.image = pygame.transform.rotate(self.image, 180)
+        if self.cur_direction == 3:
+            self.image = pygame.transform.rotate(self.image, 90)
+
 
     def move_up(self):
+        self.cur_direction = 0
         count = self.pos_y + 1
+        pygame.mixer.music.set_volume(0.5)
+        s.play()
         for i in range(count):
             self.image = pygame.transform.rotate(self.image, 0)
             if self.rect.collidelist(collided_tiles) != -1:
-                print(self.rect.collidelist(collided_tiles))
                 self.pos_y += 1
                 self.rect = self.image.get_rect().move(
                     tile_width * self.pos_x, tile_height * self.pos_y)
+                self.image = pygame.transform.rotate(self.image, 0)
                 break
             if self.pos_y == 0:
                 break
@@ -118,17 +141,20 @@ class Player(pygame.sprite.Sprite):
                 uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = load_image('good_grass.jpg')
                 uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = pygame.transform.scale(
                     uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image, (50, 50))
+                self.image = pygame.transform.rotate(self.image, 0)
 
     def move_down(self, level_y):
+        self.cur_direction = 2
         count = level_y - self.pos_y + 1
+        pygame.mixer.music.set_volume(0.5)
+        s.play()
         for i in range(count):
             self.image = pygame.transform.rotate(self.image, 180)
-
             if self.rect.collidelist(collided_tiles) != -1:
-                print(self.rect.collidelist(collided_tiles))
                 self.pos_y -= 1
                 self.rect = self.image.get_rect().move(
                     tile_width * self.pos_x, tile_height * self.pos_y)
+                self.image = pygame.transform.rotate(self.image, 180)
                 break
             if self.pos_y == level_y:
                 break
@@ -139,14 +165,15 @@ class Player(pygame.sprite.Sprite):
                 uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = load_image('good_grass.jpg')
                 uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image = pygame.transform.scale(
                     uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image, (50, 50))
+                self.image = pygame.transform.rotate(self.image, 180)
 
     def move_right(self, level_x):
+        self.cur_direction = 1
         count = level_x - self.pos_x + 1
+        pygame.mixer.music.set_volume(0.5)
+        s.play()
         for i in range(count):
-            self.image = pygame.transform.rotate(self.image, -90)
             if self.rect.collidelist(collided_tiles) != -1:
-                print(self.rect.collidelist(collided_tiles))
-
                 self.pos_x -= 1
                 self.rect = self.image.get_rect().move(
                     tile_width * self.pos_x, tile_height * self.pos_y)
@@ -162,12 +189,12 @@ class Player(pygame.sprite.Sprite):
                     uncollided_tiles[self.rect.collidelist(uncollided_tiles)].image, (50, 50))
 
     def move_left(self):
+        self.cur_direction = 3
         count = self.pos_x + 1
+        pygame.mixer.music.set_volume(0.5)
+        s.play()
         for i in range(count):
-            self.image = pygame.transform.rotate(self.image, 90)
             if self.rect.collidelist(collided_tiles) != -1:
-                print(self.rect.collidelist(collided_tiles))
-
                 self.pos_x += 1
                 self.rect = self.image.get_rect().move(
                     tile_width * self.pos_x, tile_height * self.pos_y)
@@ -198,7 +225,7 @@ def generate_level(level):
             elif level[y][x] == '*':
                 collided.append(Tile('flower', x, y))
             elif level[y][x] == '@':
-                Tile('lawn', x, y)
+                uncollided.append(Tile('lawn', x, y))
                 px = x
                 py = y
     new_player = Player(frames, px, py)
@@ -223,34 +250,41 @@ def load_level(filename):
     door_coord = rd.randint(0, house_width - 2)
     window_coord = rd.randint(0, house_width - 2)
     stuff_coord1 = rd.randint(0, house_width - 1)
-    stuff_coord2 = rd.randint(0, house_width - 1)
+    stuff_coord2 = rd.choice([0, house_width - 1])
     player_coord = rd.randint(0, house_height - 1), rd.randint(0, house_width - 1)
     if window_position == 1:
-        house_map[0][window_coord] = '#'
-        house_map[0][window_coord + 1] = '*'
-        house_map[1][window_coord] = '*'
-        house_map[1][window_coord + 1] = '#'
+        house_map[0][window_coord] = rd.choice(objects)
+        house_map[0][window_coord + 1] = rd.choice(objects)
+        house_map[1][window_coord] = rd.choice(objects)
+        house_map[1][window_coord + 1] = rd.choice(objects)
 
-        house_map[3][stuff_coord1] = '*'
+        house_map[3][stuff_coord1] = rd.choice(objects)
+        house_map[2][house_width - stuff_coord1 - 1] = rd.choice(objects)
     if window_position == 2:
-        house_map[2][window_coord] = '#'
-        house_map[2][window_coord + 1] = '*'
-        house_map[3][window_coord] = '*'
-        house_map[3][window_coord + 1] = '#'
+        house_map[2][window_coord] = rd.choice(objects)
+        house_map[2][window_coord + 1] = rd.choice(objects)
+        house_map[3][window_coord] = rd.choice(objects)
+        house_map[3][window_coord + 1] = rd.choice(objects)
 
-        house_map[0][stuff_coord1] = '#'
+        house_map[0][stuff_coord1] = rd.choice(objects)
+        house_map[1][house_width - stuff_coord1 - 1] = rd.choice(objects)
 
     for i in range(1, 4):
-        house_map[house_height - i][door_coord] = '#'
-        house_map[house_height - i][door_coord + 1] = '#'
+        house_map[house_height - i][door_coord] = rd.choice(objects)
+        house_map[house_height - i][door_coord + 1] = rd.choice(objects)
 
-    house_map[7][stuff_coord2] = '#'
+    if house_map[7][stuff_coord2] == '.':
+        house_map[7][stuff_coord2] = rd.choice(objects)
+    else:
+        stuff_coord2 = rd.randint(0, house_width - 1)
+        house_map[7][stuff_coord2] = rd.choice(objects)
 
     if house_map[player_coord[0]][player_coord[1]] == '.':
         house_map[player_coord[0]][player_coord[1]] = '@'
     else:
         player_coord = rd.randint(0, house_height - 1), rd.randint(0, house_width - 1)
         house_map[player_coord[0]][player_coord[1]] = '@'
+
     with open(filename, 'w') as mapFile:
         for i in range(len(house_map)):
             house_map[i] = ''.join(house_map[i])
@@ -261,12 +295,19 @@ def load_level(filename):
         level_map = [line.strip() for line in mapFile]
     # и подсчитываем максимальную длину
     max_width = 5
-
     # дополняем каждую строку пустыми клетками ('.')
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
 player, level_x, level_y, collided_tiles, uncollided_tiles = generate_level(load_level('field.txt'))
+
+
+def back(uncollided_tiles):
+    for i in range(len(uncollided_tiles)):
+        uncollided_tiles[i].image = load_image('grass.jpg')
+        uncollided_tiles[i].image = pygame.transform.scale(
+            uncollided_tiles[i].image, (50, 50))
+    return uncollided_tiles
 
 
 def start_screen():
@@ -299,25 +340,10 @@ def start_screen():
         clock.tick(fps)
 
 
-class Camera:
-    # зададим начальный сдвиг камеры
-    def __init__(self):
-        self.dx = 0
-        self.dy = 0
 
-    # сдвинуть объект obj на смещение камеры
-    def apply(self, obj):
-        obj.rect.x += self.dx
-        obj.rect.y += self.dy
-
-    # позиционировать камеру на объекте target
-    def update(self, target):
-        self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
-        self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
 
 
 start_screen()
-camera = Camera()
 running = True
 # generate_level(load_level('field.txt'))
 while running:
@@ -333,10 +359,16 @@ while running:
                 player.move_right(level_x)
             if event.key == pygame.K_LEFT:
                 player.move_left()
+            if event.key == pygame.K_SPACE:
+                back(uncollided_tiles)
+                player.start_position()
+            if event.key == pygame.K_LCTRL:
+                player, level_x, level_y, collided_tiles, uncollided_tiles = generate_level(load_level('field.txt'))
 
     screen.fill('white')
     all_sprites.draw(screen)
     all_sprites.update()
     clock.tick(40)
     pygame.display.flip()
+    pygame.mixer.music.play(-1)
 pygame.quit()
