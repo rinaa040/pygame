@@ -17,6 +17,7 @@ player = None
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
+result_group = pygame.sprite.Group()
 
 fps = 50
 clock = pygame.time.Clock()
@@ -77,12 +78,28 @@ tile_width = tile_height = 50
 
 
 class Tile(pygame.sprite.Sprite):
-    def __init__(self, tile_type, pos_x, pos_y, flag=True):
+    def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(tiles_group, all_sprites)
         self.image = tile_images[tile_type]
         self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
+
+
+class Result(pygame.sprite.Sprite):
+    def __init__(self, count):
+        super().__init__(result_group, all_sprites)
+        self.count = count
+        self.image = load_image('result.jpg')
+        self.image = pygame.transform.scale(self.image, (width, height))
+        self.rect = self.image.get_rect().move(0, 0)
+
+    def display(self):
+        font = pygame.font.Font("7fonts.ru_Sniglet.ttf", 60)
+        textSurf = font.render(str(self.count), 1, (233, 174, 126))
+        W = textSurf.get_width()
+        H = textSurf.get_height()
+        self.image.blit(textSurf, [width / 2 - W / 2, height / 2 - 0.2 * H])
 
 
 class Player(pygame.sprite.Sprite):
@@ -119,11 +136,10 @@ class Player(pygame.sprite.Sprite):
         if self.cur_direction == 3:
             self.image = pygame.transform.rotate(self.image, 90)
 
-
     def move_up(self):
         self.cur_direction = 0
         count = self.pos_y + 1
-        #pygame.mixer.music.set_volume(0.5)
+        # pygame.mixer.music.set_volume(0.5)
         s.play()
         for i in range(count):
             self.image = pygame.transform.rotate(self.image, 0)
@@ -147,7 +163,7 @@ class Player(pygame.sprite.Sprite):
     def move_down(self, level_y):
         self.cur_direction = 2
         count = level_y - self.pos_y + 1
-        #pygame.mixer.music.set_volume(0.5)
+        # pygame.mixer.music.set_volume(0.5)
         s.play()
         for i in range(count):
             self.image = pygame.transform.rotate(self.image, 180)
@@ -171,7 +187,7 @@ class Player(pygame.sprite.Sprite):
     def move_right(self, level_x):
         self.cur_direction = 1
         count = level_x - self.pos_x + 1
-        #pygame.mixer.music.set_volume(0.5)
+        # pygame.mixer.music.set_volume(0.5)
         s.play()
         for i in range(count):
             if self.rect.collidelist(collided_tiles) != -1:
@@ -192,7 +208,7 @@ class Player(pygame.sprite.Sprite):
     def move_left(self):
         self.cur_direction = 3
         count = self.pos_x + 1
-       # pygame.mixer.music.set_volume(0.5)
+        # pygame.mixer.music.set_volume(0.5)
         s.play()
         for i in range(count):
             if self.rect.collidelist(collided_tiles) != -1:
@@ -312,7 +328,6 @@ def back(uncollided_tiles):
 
 
 def start_screen():
-
     fon = pygame.transform.scale(load_image('fon.jpg'), (width, height))
     rules = pygame.transform.scale(load_image('fon2.jpg'), (width, height))
     screen.blit(fon, (0, 0))
@@ -332,11 +347,9 @@ def start_screen():
         clock.tick(fps)
 
 
-
-
-
 start_screen()
 running = True
+count_maps = 0
 # generate_level(load_level('field.txt'))
 while running:
     for event in pygame.event.get():
@@ -351,12 +364,15 @@ while running:
                 player.move_right(level_x)
             if event.key == pygame.K_LEFT:
                 player.move_left()
-            if event.key == pygame.K_SPACE:
+            if event.key == pygame.K_RSHIFT or event.key == pygame.K_LSHIFT:
                 back(uncollided_tiles)
                 player.start_position()
-            if event.key == pygame.K_LCTRL:
+            if event.key == pygame.K_LCTRL or event.key == pygame.K_RCTRL:
+                count_maps += 1
                 player, level_x, level_y, collided_tiles, uncollided_tiles = generate_level(load_level('field.txt'))
-
+            if event.key == pygame.K_SPACE:
+                result = Result(count_maps)
+                result.display()
     screen.fill('white')
     all_sprites.draw(screen)
     all_sprites.update()
